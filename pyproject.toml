@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "ct-library"
+version = "0.1.0"
+description = "Simple app for managing and lenting of books"
+authors = ["Jakub Bokoc <jakub@bokoc.cz>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = {extras = ["standard"], version = "^0.115.12"}
+sqlmodel = "^0.0.24"
+alembic = "^1.15.2"
+
+
+[tool.poetry.group.dev.dependencies]
+debugpy = "^1.8.13"
+uvicorn = "^0.34.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
