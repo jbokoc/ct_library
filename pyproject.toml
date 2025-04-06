@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "ct-library"
+name = "ct_library"
 version = "0.1.0"
 description = "Simple app for managing and lenting of books"
 authors = ["Jakub Bokoc <jakub@bokoc.cz>"]
@@ -11,11 +11,16 @@ python = "^3.12"
 fastapi = {extras = ["standard"], version = "^0.115.12"}
 sqlmodel = "^0.0.24"
 alembic = "^1.15.2"
+dependency-injector = "^4.46.0"
 
 
 [tool.poetry.group.dev.dependencies]
 debugpy = "^1.8.13"
 uvicorn = "^0.34.0"
+pytest = "^8.3.5"
+factory-boy = "^3.3.3"
+pytest-factoryboy = "^2.7.0"
+pytest-alembic = "^0.11.1"
 
 [build-system]
 requires = ["poetry-core"]
