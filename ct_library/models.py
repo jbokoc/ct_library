@@ -9,15 +9,20 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     create_engine,
+    null,
+    select,
     text,
 )
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
     Session,
+    configure_mappers,
     declarative_base,
     mapped_column,
+    relationship,
     sessionmaker,
 )
 
@@ -60,7 +65,6 @@ class Author(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
-    #    books: Mapped[List["Book"]] = relationship(back_populates="author")
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime,
         default=lambda: datetime.datetime.now(datetime.timezone.utc),
@@ -86,6 +90,26 @@ class Book(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, default=None, nullable=True
     )
+    lease_logs = relationship("BookLeaseLog", back_populates="book")
+
+    @hybrid_property
+    def available(self):
+        if not self.lease_logs:
+            return True
+
+        latest_log = max(self.lease_logs, key=lambda log: log.created_at)
+        return latest_log.returned_at is not None
+
+    @available.expression
+    def available(cls):
+        subquery = (
+            select(BookLeaseLog.returned_at)
+            .where(BookLeaseLog.book_id == cls.id)
+            .order_by(BookLeaseLog.created_at.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        return subquery.isnot(null())
 
 
 class BookLeaseLog(Base):
@@ -106,3 +130,7 @@ class BookLeaseLog(Base):
     returned_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, default=None, nullable=True
     )
+    book = relationship("Book", back_populates="lease_logs")
+
+
+configure_mappers()

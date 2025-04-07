@@ -2,13 +2,10 @@ import os
 import sys
 from pathlib import Path
 
-current_folder = Path(__file__).resolve().parent
-sys.path.append(os.path.join(current_folder, "../"))
-
 import uvicorn
 
-from ct_library.api import router
-from ct_library.exceptions import register_exception_handlers  # noqa: F401, F403:q
+current_folder = Path(__file__).resolve().parent
+sys.path.append(os.path.join(current_folder, "../"))
 
 
 def app_factory():
@@ -16,7 +13,9 @@ def app_factory():
     Factory function to create a FastAPI app instance.
     :return: A FastAPI app instance.
     """
+    from ct_library.api import router
     from ct_library.container import Container  # noqa: F401, F403
+    from ct_library.exceptions import register_exception_handlers  # noqa: F401, F403:q
 
     di_container = Container()
 

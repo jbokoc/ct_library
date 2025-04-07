@@ -1,6 +1,7 @@
 from contextlib import AbstractContextManager
 from typing import Callable, Sequence
 
+from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import delete, select
 from sqlmodel import Session
 
@@ -17,8 +18,6 @@ class BaseRepository:
 class AuthorRepository(BaseRepository):
     def get_all(self) -> Sequence[Author]:
         with self.session_factory() as session:
-            # return session.execute(select(Author).order_by(Author.name)).all()
-
             return session.execute(select(Author).order_by(Author.name)).scalars().all()
 
     def get_by_id(self, author_id) -> Author:
@@ -40,8 +39,15 @@ class AuthorRepository(BaseRepository):
 
 class BookRepository(BaseRepository):
     def get_all(self) -> Sequence[Book]:
+        # TODO join ordert by created_at
         with self.session_factory() as session:
-            return session.query(Book).order_by(Book.title).all()
+            return (
+                session.query(Book)
+                .options(joinedload(Book.lease_logs))
+                .join(BookLeaseLog, isouter=True)
+                .order_by(Book.title, BookLeaseLog.created_at.desc())
+                .all()
+            )
 
     def get_by_id(self, book_id) -> Book:
         with self.session_factory() as session:
@@ -62,6 +68,25 @@ class BookRepository(BaseRepository):
             session.execute(delete(Book).where(Book.id == book_id))
             session.commit()
 
+    def get_by_author_id(self, author_id) -> Sequence[Book]:
+        with self.session_factory() as session:
+            return session.query(Book).where(Book.author_id == author_id).all()
+
+    def filter_by_availability(self, available: bool) -> Sequence[Book]:
+        with self.session_factory() as session:
+            return (
+                session.query(Book)
+                .options(joinedload(Book.lease_logs))
+                .join(BookLeaseLog, isouter=True)
+                .filter(
+                    BookLeaseLog.returned_at.is_(None)
+                    if available
+                    else BookLeaseLog.returned_at.isnot(None)
+                )
+                .order_by(Book.title, BookLeaseLog.created_at.desc())
+                .all()
+            )
+
 
 class BookLendLogRepository(BaseRepository):
     def get_last_lease_log(self, book_id) -> BookLeaseLog:
@@ -80,11 +105,7 @@ class BookLendLogRepository(BaseRepository):
 
     def get_by_author_id(self, author_id) -> Sequence[BookLeaseLog]:
         with self.session_factory() as session:
-            return (
-                session.execute(select(BookLeaseLog).where(Book.author_id == author_id))
-                .scalars()
-                .all()
-            )
+            return session.query(BookLeaseLog).where(Book.author_id == author_id).all()
 
     def save(self, book: BookLeaseLog) -> BookLeaseLog:
         with self.session_factory() as session:
@@ -96,11 +117,3 @@ class BookLendLogRepository(BaseRepository):
     def get_by_book_id(self, book_id) -> Sequence[BookLeaseLog]:
         with self.session_factory() as session:
             return session.query(BookLeaseLog).where(Book.id == book_id).all()
-
-    #
-    # def return_book(self, book: Book, user_id: int) -> Book:
-    #     with self.session_factory() as session:
-    #         session.add(book)
-    #         session.commit()
-    #         session.refresh(book)
-    #         return book

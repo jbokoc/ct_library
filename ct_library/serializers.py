@@ -29,6 +29,7 @@ class BookInSerializer(BaseModel):
 
 class BookOutSerializer(BookInSerializer):
     id: int = Field(init=False, frozen=True)
+    available: bool
     author_id: int = Field()
     created_at: datetime = Field()
 
@@ -66,3 +67,7 @@ class BookLendSerializer(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class BookFilterParams(BaseModel):
+    available: bool | None = Field(default=None)

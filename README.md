@@ -3,7 +3,7 @@
 ## Description
 
 This humble server can manage authors book and leases. Although it's missing fundamental features like authentication, it serves as a good starting point for a library management system.
-I'm fully aware that using this setup (framework, db, ...) vary far from ideal as even simple tasks will require a lot of code. Anyway I wanted to try out (not for first time) FastAPI whit DI container and SQLAlchemy.
+I'm fully aware that using this setup (framework, db, ...) is very far from ideal as even simple tasks will require a lot of code. Anyway I wanted to try out FastAPI (not for first time) whit DI container and SQLAlchemy. With frameworks like Django it could be done within an hour or two.
 
 ## Usage
 

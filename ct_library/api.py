@@ -1,7 +1,7 @@
 from typing import Annotated, List
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.exceptions import HTTPException
 from fastapi.params import Header
 from fastapi.responses import Response
@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from ct_library.serializers import (
     AuthorInSerializer,
     AuthorOutSerializer,
+    BookFilterParams,
     BookInSerializer,
     BookLeaseLogInSerializer,
     BookLeaseLogOutSerializer,
@@ -23,19 +24,28 @@ async def root(request: Request):
     """
     Root endpoint for the API.
     """
-
     return {"books": "books"}
 
 
 @router.get("/books/")
 @inject
 def books_list(
+    filter_params: Annotated[BookFilterParams, Query()],
     book_service=Depends(Provide["book_service"]),
 ) -> List[BookOutSerializer]:
     """
     Retrieves a list of all books.
     """
-    return [BookOutSerializer.model_validate(book) for book in book_service.get_all()]
+    # for o in book_service.get_all(filter_params):
+    #     print(type(o))
+    #     print(o)
+    #
+    # return []
+    #
+    return [
+        BookOutSerializer.model_validate(book)
+        for book in book_service.get_all(filter_params)
+    ]
 
 
 @router.post("/authors/{author_id}/books/")
@@ -162,7 +172,7 @@ def put_book_lend(
     status_code = 200 if book_lease.returned_at else 201
     return Response(
         status_code=status_code,
-        content=BookLeaseLogOutSerializer.model_validate(book_lease).json(),
+        content=BookLeaseLogOutSerializer.model_validate(book_lease).model_dump_json(),
         media_type="application/json",
     )
 
