@@ -9,6 +9,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     create_engine,
+    desc,
     null,
     select,
     text,
@@ -90,13 +91,13 @@ class Book(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, default=None, nullable=True
     )
-    lease_logs = relationship("BookLeaseLog", back_populates="book")
+    lease_logs = relationship("BookLeaseLog", back_populates="book", lazy="immediate")
 
     @hybrid_property
     def available(self):
         if not self.lease_logs:
             return True
-
+        print("Lease logs:", self.lease_logs)
         latest_log = max(self.lease_logs, key=lambda log: log.created_at)
         return latest_log.returned_at is not None
 
@@ -105,10 +106,10 @@ class Book(Base):
         subquery = (
             select(BookLeaseLog.returned_at)
             .where(BookLeaseLog.book_id == cls.id)
-            .order_by(BookLeaseLog.created_at.desc())
-            .limit(1)
+            .order_by(desc(BookLeaseLog.created_at))
+            .group_by(BookLeaseLog.book_id)
             .scalar_subquery()
-        )
+        ).label("latest_returned_at")  # Give the subquery a label
         return subquery.isnot(null())
 
 
@@ -130,7 +131,7 @@ class BookLeaseLog(Base):
     returned_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, default=None, nullable=True
     )
-    book = relationship("Book", back_populates="lease_logs")
+    book = relationship("Book", back_populates="lease_logs", lazy="immediate")
 
 
 configure_mappers()

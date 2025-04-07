@@ -138,7 +138,7 @@ class BookLeaseService:
         Create a new book lend log.
         :return: The created book lend log.
         """
-
+        user_id = int(user_id)
         book = self.book_repo.get_by_id(book_id)
 
         try:

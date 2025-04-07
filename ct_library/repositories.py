@@ -1,7 +1,8 @@
 from contextlib import AbstractContextManager
 from typing import Callable, Sequence
 
-from sqlalchemy.orm import joinedload
+from sqlalchemy import func
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import delete, select
 from sqlmodel import Session
 
@@ -39,11 +40,9 @@ class AuthorRepository(BaseRepository):
 
 class BookRepository(BaseRepository):
     def get_all(self) -> Sequence[Book]:
-        # TODO join ordert by created_at
         with self.session_factory() as session:
             return (
                 session.query(Book)
-                .options(joinedload(Book.lease_logs))
                 .join(BookLeaseLog, isouter=True)
                 .order_by(Book.title, BookLeaseLog.created_at.desc())
                 .all()
@@ -74,18 +73,29 @@ class BookRepository(BaseRepository):
 
     def filter_by_availability(self, available: bool) -> Sequence[Book]:
         with self.session_factory() as session:
-            return (
-                session.query(Book)
-                .options(joinedload(Book.lease_logs))
-                .join(BookLeaseLog, isouter=True)
-                .filter(
-                    BookLeaseLog.returned_at.is_(None)
-                    if available
-                    else BookLeaseLog.returned_at.isnot(None)
+            LatestLog = aliased(BookLeaseLog)
+
+            query = (
+                select(Book)
+                .outerjoin(
+                    LatestLog,
+                    (Book.id == LatestLog.book_id)
+                    & (
+                        LatestLog.created_at
+                        == (
+                            select(func.max(BookLeaseLog.created_at))
+                            .where(BookLeaseLog.book_id == Book.id)
+                            .scalar_subquery()
+                        )
+                    ),
                 )
-                .order_by(Book.title, BookLeaseLog.created_at.desc())
-                .all()
+                .where(
+                    (LatestLog.id.is_(None)) | (LatestLog.returned_at.isnot(None))
+                    if available
+                    else LatestLog.returned_at.is_(None) & (LatestLog.id.isnot(None))
+                )
             )
+            return session.scalars(query).all()
 
 
 class BookLendLogRepository(BaseRepository):
